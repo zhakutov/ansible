@@ -1,19 +1,88 @@
-#Install Ansible :
-yum install ansible 
+***1.Install Ansible :
+# yum install ansible 
+# yum install python
 
-#Check environment/vertion:
+The vertions and names of packets are depended of OS.
+
+***2.Check environment/vertion to be familiar with path and files:
 # ansible --version
-ansible 2.9.6
-"
- config file = /etc/ansible/ansible.cfg
 
- configured module search path = ['/root/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+***3.Use the command #ssh-keygen to generate the key pair on managing node:
+# ssh-keygen
 
- ansible python module location = /usr/local/lib/python3.6/site-packages/ansible-2.9.6-py3.6.egg/ansible
+***4.Send ssh-keys for managed nodes:
+# ssh-copy-id <target user>@<IP address/Hostname of the managed node>
 
- executable location = /usr/local/bin/ansible
+Note: It will require a one-time password for the target user on the managed node. 
+The command ssh-copy-id will copy the control node's a public key to the authorized_keys file on the managed nodes.
+Ansible communicates with remote machines over the SSH protocol. By default, Ansible uses native OpenSSH and connects to remote machines using your current user name, just as SSH does.
 
- python version = 3.6.8 
-"
+***5. Add a new [myhosts] group to the /etc/ansible/hosts.
 
-#Exchange ssh-keys for nodes:
+[myhosts]
+192.0.2.50
+192.0.2.51
+192.0.2.52
+
+***6. Verify your inventory: 
+# ansible all -m ping
+
+You should see output for each host in your inventory, similar to this:
+
+192.0.2.50 | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python"
+    },
+    "changed": false,
+    "ping": "pong"
+}
+
+***7. Now you can create playbooks in YAML format to use advanced features, modules and 
+Create a file named playbook.yaml  with the following content:
+
+- name: My first play
+  hosts: myhosts
+  tasks:
+   - name: Ping my hosts
+     ansible.builtin.ping:
+
+   - name: Print message
+     ansible.builtin.debug:
+       msg: Hello world
+
+***8. Run your playbook.
+# ansible-playbook all playbook.yaml
+
+Ansible returns the following output:
+
+PLAY [My first play] ****************************************************************************
+
+TASK [Gathering Facts] **************************************************************************
+ok: [192.0.2.50]
+ok: [192.0.2.51]
+ok: [192.0.2.52]
+
+TASK [Ping my hosts] ****************************************************************************
+ok: [192.0.2.50]
+ok: [192.0.2.51]
+ok: [192.0.2.52]
+
+TASK [Print message] ****************************************************************************
+ok: [192.0.2.50] => {
+    "msg": "Hello world"
+}
+ok: [192.0.2.51] => {
+    "msg": "Hello world"
+}
+ok: [192.0.2.52] => {
+    "msg": "Hello world"
+}
+
+PLAY RECAP **************************************************************************************
+192.0.2.50: ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+192.0.2.51: ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+192.0.2.52: ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+###
+IF you saw this, then Ansible quick start is complited.
+###END.
