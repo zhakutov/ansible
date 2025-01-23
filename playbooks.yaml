@@ -4,7 +4,7 @@
     name: '*'
     state: latest
 
-### This example is about to install the new packets as example  :
+### This example is about to install the new packets by certain names  :
 - name: Install a list of packages
   yum:
       name:
