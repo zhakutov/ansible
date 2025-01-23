@@ -1,0 +1,19 @@
+#Install Ansible :
+yum install ansible 
+
+#Check environment/vertion:
+# ansible --version
+ansible 2.9.6
+"
+ config file = /etc/ansible/ansible.cfg
+
+ configured module search path = ['/root/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+
+ ansible python module location = /usr/local/lib/python3.6/site-packages/ansible-2.9.6-py3.6.egg/ansible
+
+ executable location = /usr/local/bin/ansible
+
+ python version = 3.6.8 
+"
+
+#Exchange ssh-keys for nodes:
