@@ -34,7 +34,7 @@ You should see output for each host in your inventory, similar to this:
     "ping": "pong"
 }
 
-***7. Now you can create playbooks in YAML format to use advanced features, modules and 
+***7. Now you can create playbooks in YAML format to use advanced features.
 Create a file named playbook.yaml  with the following content:
 
 - name: My first play
