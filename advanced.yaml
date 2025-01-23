@@ -1,0 +1,45 @@
+#First, it checks if there are any packages to be updated and displays them.
+#Next, it starts the update.
+#After that it installs (if necessary) yum-utils package that provides needs-restarting command which tells us if the system reboot is required after the update.
+#Then it reboots host if necessary and wait for it to come back online.
+#At the end it displays a message with number of seconds that it took to reboot.
+
+- name: check packages for updates
+  shell: yum list updates | awk 'f;/Updated Packages/{f=1;}' | awk '{ print $1 }'
+  changed_when: updates.stdout_lines | length > 0
+  args:
+    warn: false
+  register: updates
+- name: display count
+  debug:
+    msg: "Found {{ updates.stdout_lines | length }} packages to be updated:\n\n{{ updates.stdout }}"
+- when: updates.stdout_lines | length > 0
+  block:
+    - name: install updates using yum
+      yum:
+        name: "*"
+        state: latest
+    - name: install yum-utils
+      package:
+        name: yum-utils
+    - name: check if reboot is required
+      shell: needs-restarting -r
+      failed_when: false
+      register: reboot_required
+      changed_when: false
+- when: updates.stdout_lines | length > 0 and reboot_required.rc != 0
+  block:
+    - name: reboot the server if required
+      shell: sleep 3; reboot
+      ignore_errors: true
+      changed_when: false
+      async: 1
+      poll: 0
+    - name: wait for server to come back after reboot
+      wait_for_connection:
+        timeout: 600
+        delay: 20
+      register: reboot_result
+    - name: reboot time
+      debug:
+        msg: "The system rebooted in {{ reboot_result.elapsed }} seconds."
