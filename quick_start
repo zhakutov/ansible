@@ -1,8 +1,5 @@
 ***1.Install Ansible :
 # yum install ansible 
-# yum install python
-
-The vertions and names of packets are depended of OS.
 
 ***2.Check environment/vertion to be familiar with path and files:
 # ansible --version
