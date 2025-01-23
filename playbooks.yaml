@@ -1,0 +1,24 @@
+### The following task will update all already installed packages, not install available ones: :
+- name: upgrade all packages
+  yum: 
+    name: '*'
+    state: latest
+
+### This example is about to install the new packets as example  :
+- name: Install a list of packages
+  yum:
+      name:
+           - nginx
+           - postgresql
+           - postgresql-server
+      state: present
+      
+### This example will install and upgrade all available packages from repos :
+- name: gather list of packages available
+  shell: yum repo-pkgs reponame list
+  register: packages
+
+- name: install/upgrade all packages
+  yum: 
+    name: "{{packages.stdout_lines|join(',')}}"
+    state: latest
