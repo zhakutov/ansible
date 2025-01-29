@@ -1,0 +1,7 @@
+#openstack-satatus
+
+CEPH
+# ceph -v
+# yum -y install epel-release
+# systemctl stop firewalld.service
+# systemctl disable firewalld.service
