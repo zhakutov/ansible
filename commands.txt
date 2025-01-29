@@ -124,6 +124,7 @@ moved item id -2 name 'ceph2' to location {root=default} in crush map
 По окончании настройки просмотреть карту и веса OSD можно
 будет командой
 [root@ceph1 ~]# ceph osd tree
+...
 
 Для каждого из шести OSD выполняем следующую команду, добавляя их в CRUSH-карту:
 [root@ceph3 ~]# ceph osd crush add osd.5 1.0 host=ceph3 
