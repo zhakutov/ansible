@@ -5,3 +5,137 @@ CEPH
 # yum -y install epel-release
 # systemctl stop firewalld.service
 # systemctl disable firewalld.service
+
+each node:
+[root@ceph1 ~]# useradd cephinstall
+[root@ceph1 ~]# passwd cephinstall
+[root@ceph1 ~]# cat << EOF >/etc/sudoers.d/cephinstall
+> cephinstall ALL = (root) NOPASSWD:ALL
+> Defaults:cephinstall !requiretty
+> EOF
+[root@ceph1 ~]# chmod 0440 /etc/sudoers.d/cephinstall
+
+[root@ceph1 ~]# su – cephinstall
+[cephinstall@ceph1 ~]$ ssh-keygen
+[cephinstall@ceph1 ~]$ ssh-copy-id cephinstall@ceph1
+[cephinstall@ceph1 ~]$ ssh-copy-id cephinstall@ceph2
+[cephinstall@ceph1 ~]$ ssh-copy-id cephinstall@ceph3
+
+~/.ssh/config
+Host ceph1
+ Hostname ceph1
+ User cephinstall
+Host ceph2
+ Hostname ceph2
+ User cephinstall
+Host ceph3
+ Hostname ceph3
+ User cephinstall
+
+$ chmod 600 /home/cephinstall/.ssh/config
+[cephinstall@ceph1 ~]$ mkdir test-cluster
+[cephinstall@ceph1 ~]$ cd test-cluster
+[cephinstall@ceph1 test-cluster]$ ceph-deploy new ceph1
+[cephinstall@ceph1 test-cluster]$ ls
+ceph.conf ceph.log ceph.mon.keyring
+
+vi ceph.conf 
+public_network = 192.168.122.11/24
+cluster_network = 192.168.222.11/24
+osd_pool_default_size = 2
+osd_pool_default_min_size = 1
+
+[root@ceph2 ~]# tail -f /var/log/messages
+[cephinstall@ceph1 test-cluster]$ ceph-deploy install ceph1 ceph2 ceph3
+…
+[ceph3][DEBUG ] Complete!
+
+[cephinstall@ceph1 test-cluster]$ ceph-deploy mon create-initial
+[cephinstall@ceph1 test-cluster]$ ceph-deploy disk zap ceph2:vdb ceph2:vdc ceph2:vdd
+[cephinstall@ceph1 test-cluster]$ ceph-deploy osd prepare
+ceph2:vdb ceph2:vdc ceph2:vdd
+...
+[ceph_deploy.osd][DEBUG ] Host ceph2 is now ready for osd use
+
+[root@ceph2 ~]# fdisk -l /dev/vdb
+...
+Disk label type: gpt
+# Start End Size Type Name
+ 1 10487808 104857566 45G unknown ceph data
+ 2 2048 10485760 5G unknown ceph journal
+
+[root@ceph1 ~]# monmaptool --print /tmp/monmap
+vi /etc/ceph/ceph
+[global]
+fsid = 1d618cdf-c648-4e9c-8aed-c170577a5d83
+mon initial members = ceph1
+mon host = 192.168.122.11
+public network = 192.168.122.0/24
+auth cluster required = cephx
+auth service required = cephx
+auth client required = cephx
+osd journal size = 1024
+osd pool default size = 2
+osd pool default min size = 1
+osd pool default pg num = 128
+osd pool default pgp num = 128
+[mon.ceph1]
+host = ceph1
+mon addr = 192.168.122.11:6789
+
+[root@ceph1 ~]# touch /var/lib/ceph/mon/ceph-ceph1/done
+[root@ceph1 ~]# /etc/init.d/ceph start mon.ceph1
+[root@ceph1 ~]# ceph osd lspools
+0 data,1 metadata,2 rbd
+
+[root@ceph1 ~]# ceph -s | grep mon
+ monmap e1: 1 mons at {ceph1=192.168.122.11:6789/0}, election
+epoch 1, quorum 0 ceph1
+
+[root@ceph2 ~]# mkfs.xfs /dev/vdb1
+[root@ceph2 ~]# mkdir /var/lib/ceph/osd/ceph-0
+[root@ceph2 ~]# echo "/dev/vdb1 /var/lib/ceph/osd/ceph-0 xfs
+defaults 0 1" >> /etc/fstab
+[root@ceph2 ~]# mount -a
+
+vi /etc/ceph/ceph
+[osd.0]
+host = ceph2
+...
+[osd.5]
+host = ceph3
+
+Скопируем отредактированный конфигурационный файл с первого узла на оба оставшихся. То же самое проделаем с файлом /etc/ceph/ceph.client.admin.keyring.
+По числу OSD на каждом из узлов запускаем команду
+[root@ceph3 ~]# ceph osd create
+
+Для каждого из дисков/OSD выполняем команды вида:
+[root@ceph3 ~]# ceph-osd -i 5 --mkfs --mkkey
+[root@ceph3 ~]# ceph auth add osd.5 osd 'allow *' mon 'allow
+profile osd' -i /var/lib/ceph/osd/ceph-5/keyring
+
+[root@ceph2 ~]# ceph --cluster ceph osd crush add-bucket ceph2 host
+added bucket ceph3 type host to crush map
+[root@ceph2 ~]# ceph osd crush move ceph2 root=default
+moved item id -2 name 'ceph2' to location {root=default} in crush map
+
+Тем самым мы добавили узел в карту алгоритма CRUSH и помес
+тили его в корень default.
+По окончании настройки просмотреть карту и веса OSD можно
+будет командой
+[root@ceph1 ~]# ceph osd tree
+
+Для каждого из шести OSD выполняем следующую команду, добавляя их в CRUSH-карту:
+[root@ceph3 ~]# ceph osd crush add osd.5 1.0 host=ceph3 
+add item id 5 name 'osd.5' weight 1 at location {host=ceph3} to crush map
+
+После этого можно запустить скрипт /etc/init.d/ceph start и проверить состояние нашего кластера:
+[root@ceph1 ~]# ceph -s
+ cluster 1d618cdf-c648-4e9c-8aed-c170577a5d83
+ health HEALTH_OK
+ monmap e1: 1 mons at {ceph1=192.168.122.11:6789/0}, election
+epoch 1, quorum 0 ceph1...
+
+[root@ceph1 ~]# ceph –w :позволяет отслеживать состояние кластера в реальном времени
+[root@ceph1 ~]# ceph df
+...
