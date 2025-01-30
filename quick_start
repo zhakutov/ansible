@@ -82,5 +82,5 @@ PLAY RECAP *********************************************************************
 192.0.2.52: ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
 
 ###
-IF you saw this, then Ansible quick start is complited.
+IF you saw this, then Ansible quick start is completed.
 
